@@ -7,6 +7,7 @@ appsettings.json
 cache/
 db-logs/
 wwwroot/uploads/
+Nuget.Config
 
 # User-specific files
 *.suo
