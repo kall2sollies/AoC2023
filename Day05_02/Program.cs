@@ -5,7 +5,23 @@ public class Program
     public static void Main()
     {
         Game game = new("input.txt");
-        Console.WriteLine(game.GetClosestLocationForSeeds());
+
+        long closestLocation = long.MaxValue;
+
+        foreach (var seedRange in game.SeedRanges)
+        {
+            for (var seed = seedRange.Start; seed <= seedRange.End; seed++)
+            {
+                var location = game.GetLocationForSeed(seed);
+
+                if (location < closestLocation)
+                {
+                    closestLocation = location;
+                }
+            }
+        }
+
+        Console.WriteLine(closestLocation);
     }
 }
 
@@ -26,18 +42,13 @@ public class Game
 {
     public List<MapGroup> Groups { get; set; } = new();
 
-    public List<long> Seeds { get; set; } = new();
+    public List<MapRange> SeedRanges { get; set; } = new();
 
     public MapGroup GetGroupByName(string name) => Groups.First(x => x.Name == name);
 
     public Game(string fileName)
     {
         ParseData(fileName);
-    }
-
-    public long GetClosestLocationForSeeds()
-    {
-        return Seeds.Select(GetLocationForSeed).Min();
     }
 
     public long GetLocationForSeed(long seed)
@@ -67,10 +78,7 @@ public class Game
             var seed = seedsWithRanges[i];
             var length = seedsWithRanges[i + 1];
 
-            for (var s = seed; s < seed + length - 1; s++)
-            {
-                Seeds.Add(s);
-            }
+            SeedRanges.Add(new MapRange(seed, length));
         }
 
         MapGroup currentGroup = null;
