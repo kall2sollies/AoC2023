@@ -5,7 +5,39 @@ public class Program
     public static void Main()
     {
         Game game = new("input.txt");
-        Console.WriteLine(game.Solve());
+
+        var results = game.Solve();
+
+        var gameResult = Lcm(results);
+
+        Console.WriteLine(gameResult);
+    }
+
+    public static long Gcd(long a, long b)
+    {
+        while (b != 0)
+        {
+            long temp = b;
+            b = a % b;
+            a = temp;
+        }
+        return a;
+    }
+
+    public static long Lcm(long a, long b)
+    {
+        return (a / Gcd(a, b)) * b;
+    }
+
+    public static long Lcm(long[] numbers)
+    {
+        long buffer = numbers[0];
+        for (int i = 1; i < numbers.Length; i++)
+        {
+            buffer = Lcm(buffer, numbers[i]);
+        }
+
+        return buffer;
     }
 
     public class Game
@@ -13,46 +45,52 @@ public class Program
         public char[] Directions { get; set; }
         public List<Node> Nodes { get; set; } = new();
 
-        private readonly Node[] CurrentNodes;
+        private Node _currentNode;
 
         public Game(string fileName)
         {
             ParseGameFile(fileName);
-
-            CurrentNodes = Nodes.Where(x => x.IsStartNode).ToArray();
         }
 
-        public long Solve()
+        public long[] Solve()
         {
-            long moves = 0;
+            var startNodes = Nodes.Where(x => x.IsStartNode).ToArray();
 
-            for (long i = 0; true; i++)
+            long[] results = new long[startNodes.Length];
+
+            for (var n = 0; n < startNodes.Length; n++)
             {
-                var currentDirection = Directions[i % Directions.Length];
-                MoveNext(currentDirection);
-                moves++;
+                long moves = 0;
 
-                if (CurrentNodes.All(x => x.IsEndNode))
+                _currentNode = startNodes[n];
+
+                for (long i = 0; true; i++)
                 {
-                    break;
+                    var currentDirection = Directions[i % Directions.Length];
+                    MoveNext(currentDirection);
+                    moves++;
+
+                    if (_currentNode.IsEndNode)
+                    {
+                        break;
+                    }
                 }
+
+                results[n] = moves;
             }
 
-            return moves;
+            return results;
         }
 
         private void MoveNext(char direction)
         {
-            for (var index = 0; index < CurrentNodes.Length; index++)
+            _currentNode = direction switch
             {
-                CurrentNodes[index] = direction switch
-                {
-                    'L' => CurrentNodes[index].Left,
-                    'R' => CurrentNodes[index].Right,
-                    _ => throw new Exception("Unknown direction")
-                };
-            }
-        }
+                'L' => _currentNode.Left,
+                'R' => _currentNode.Right,
+                _ => throw new Exception("Unknown direction")
+            };
+ }
 
         private void ParseGameFile(string input)
         {
