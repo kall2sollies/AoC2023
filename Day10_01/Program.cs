@@ -1,18 +1,38 @@
-﻿namespace Day10_01;
+﻿using System.Text;
+
+namespace Day10_01;
 
 public class Program
 {
     public static void Main()
     {
+        Map map = new(File.ReadAllLines("input.txt"));
+        Console.WriteLine(map);
 
+        Tile currentTile = map.StartTile;
+
+        int steps = 0;
+        while (true)
+        {
+            currentTile = currentTile.Next();
+            steps++;
+            if (currentTile.IsStartTile) break;
+        }
+
+        var halfSteps = steps / 2;
+
+        Console.WriteLine(steps);
     }
 }
 
 public class Map
 {
     public Tile[,] Tiles { get; private set; }
+    public List<Tile> TileList { get; private set; } = new();
     public int Height { get; private set; }
     public int Width { get; private set; }
+
+    public Tile StartTile => TileList.First(x => x.IsStartTile);
 
     private readonly string[] _lines;
 
@@ -39,8 +59,26 @@ public class Map
                 Tile tile = TileFactory.CreateTile(c, this, x, y);
 
                 Tiles[x, y] = tile;
+                TileList.Add(tile);
             }
         }
+    }
+
+    public override string ToString()
+    {
+        StringBuilder sb = new();
+
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                sb.Append(Tiles[x, y]);
+            }
+
+            sb.Append(Environment.NewLine);
+        }
+
+        return sb.ToString();
     }
 }
 
@@ -50,14 +88,14 @@ public static class TileFactory
     {
         return c switch
         {
-            '.' => new Ground(map, x, y),
-            'F' => new Pipe(map, x, y, new[] {Directions.S, Directions.E}),
-            '-' => new Pipe(map, x, y, new[] {Directions.W, Directions.E}),
-            '7' => new Pipe(map, x, y, new[] {Directions.W, Directions.S}),
-            '|' => new Pipe(map, x, y, new[] {Directions.N, Directions.S}),
-            'J' => new Pipe(map, x, y, new[] {Directions.N, Directions.W}),
-            'L' => new Pipe(map, x, y, new[] {Directions.N, Directions.E}),
-            'S' => new Pipe(map, x, y, Array.Empty<Directions>()) {IsStartTile = true},
+            '.' => new Ground(map, x, y, c),
+            'F' => new Pipe(map, x, y, c, new[] {Directions.S, Directions.E}),
+            '-' => new Pipe(map, x, y, c, new[] {Directions.W, Directions.E}),
+            '7' => new Pipe(map, x, y, c, new[] {Directions.W, Directions.S}),
+            '|' => new Pipe(map, x, y, c, new[] {Directions.N, Directions.S}),
+            'J' => new Pipe(map, x, y, c, new[] {Directions.N, Directions.W}),
+            'L' => new Pipe(map, x, y, c, new[] {Directions.N, Directions.E}),
+            'S' => new Pipe(map, x, y, c, new[] {Directions.N, Directions.E, Directions.S, Directions.W}) {IsStartTile = true},
             _ => throw new Exception("Unknown tile")
         };
     }
@@ -66,6 +104,7 @@ public static class TileFactory
 public abstract class Tile
 {
     private readonly Map _map;
+    private readonly char _char;
 
     public int X { get; set; }
     public int Y { get; set; }
@@ -77,11 +116,15 @@ public abstract class Tile
     public bool IsLastColumn => X == _map.Width - 1;
     public bool IsLastRow => Y == _map.Height - 1;
 
-    protected Tile(Map map, int x, int y)
+    public Guid Id { get; set; }
+
+    protected Tile(Map map, int x, int y, char c)
     {
         _map = map;
+        _char = c;
         X = x;
         Y = y;
+        Id = Guid.NewGuid();
     }
 
     public Tile GetRelativeTile(int xOffset, int yOffset)
@@ -121,11 +164,81 @@ public abstract class Tile
             return cells.Where(x => x != null).ToList();
         }
     }
+
+    public bool HasDirection(Directions direction) => Connexions.Contains(direction);
+
+    public bool HasConnectionTo(Directions direction)
+    {
+        if (!HasConnexions) return false;
+
+        if (!HasDirection(direction)) return false;
+
+        Tile tileAtDirection = GetTileAt(direction);
+
+        if (tileAtDirection == null) return false;
+
+        return tileAtDirection.HasDirection(GetOppositeDirection(direction));
+    }
+
+    public bool IsNeighbourOf(Tile other)
+    {
+        return Neighbours.Select(x => x.Id).Contains(other.Id);
+    }
+
+    public bool HasConnectionTo(Tile other)
+    {
+        if (!IsNeighbourOf(other)) return false;
+
+        Directions[] directions = {Directions.N, Directions.E, Directions.W, Directions.S};
+        return directions.Any(d => HasConnectionTo(d) && other.HasConnectionTo(GetOppositeDirection(d)));
+    }
+
+    private Directions GetOppositeDirection(Directions direction)
+    {
+        return direction switch
+        {
+            Directions.N => Directions.S,
+            Directions.E => Directions.W,
+            Directions.S => Directions.N,
+            Directions.W => Directions.E,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
+        };
+    }
+
+    public Tile[] GetConnectedNeighbours()
+    {
+        return Neighbours.Where(x => x != null && x.HasConnectionTo(this)).ToArray();
+    }
+
+    public Tile Next()
+    {
+        if (HasConnectionTo(Directions.N)) return GetTileAt(Directions.N);
+        if (HasConnectionTo(Directions.E)) return GetTileAt(Directions.E);
+        if (HasConnectionTo(Directions.S)) return GetTileAt(Directions.S);
+        if (HasConnectionTo(Directions.W)) return GetTileAt(Directions.W);
+        return null;
+    }
+
+    public override string ToString()
+    {
+        return _char switch
+        {
+            '.' => " ",
+            'F' => "\u2554",
+            '-' => "\u2550",
+            '7' => "\u2557",
+            '|' => "\u2551",
+            'J' => "\u255d",
+            'L' => "\u255a",
+            'S' => "\u256c",
+            _ => throw new Exception("Unknown tile")
+        };
+    }
 }
 
 public class Ground : Tile
 {
-    public Ground(Map map, int x, int y) : base(map, x, y)
+    public Ground(Map map, int x, int y, char c) : base(map, x, y, c)
     {
 
     }
@@ -133,7 +246,7 @@ public class Ground : Tile
 
 public class Pipe : Tile
 {
-    public Pipe(Map map, int x, int y, Directions[] connexions) : base(map, x, y)
+    public Pipe(Map map, int x, int y, char c, Directions[] connexions) : base(map, x, y, c)
     {
         Connexions = connexions;
     }
