@@ -92,6 +92,9 @@ public abstract class Tile
         return HasConnectionTo(directionOfOther) && other.HasConnectionTo(GetOppositeDirection(directionOfOther));
     }
 
+    public bool IsVertical => HasDirection(Directions.N) || HasDirection(Directions.S);
+    public bool IsHorizontal => HasDirection(Directions.W) || HasDirection(Directions.E);
+
     public bool IsInner
     {
         get
@@ -110,12 +113,18 @@ public abstract class Tile
 
             // traverse towards east (or whatever direction)
             // count how many times we cross the loop contour
-            // following an edge counts twice
             // if total is odd, we're inside
             // if total is even or zero, we're outside
 
+            // debug
+            if (this.X == 0 && this.Y == 0)
+            {
+                var foo = "bar";
+            }
+
             while (true)
             {
+                // We traverse horizontally
                 currentTile = currentTile.East;
 
                 // we are off the map
@@ -124,25 +133,15 @@ public abstract class Tile
                     break;
                 }
 
-                if (currentTile.IsInLoop)
+                if (currentTile.IsInLoop && currentTile.IsVertical)
                 {
-                    // We meet the loop contour while we were off the contour
-                    if (stateHistory.Last() == '0') stateHistory += "1";
-
-                    // We are following an edge and we're at the second tile of the edge
-                    else if (stateHistory.Last() == '1') stateHistory += "2";
-
-                    // We are still following an edge, at the third or more tile. We do nothing
+                    stateHistory += "1";
                 }
                 else
                 {
-                    // We don't need to know how many times we're off the loop contour
-                    if (stateHistory.Last() != '0') stateHistory += "0";
+                    stateHistory += "0";
                 }
             }
-
-            // Now we can switch the 2's for 1's
-            stateHistory = stateHistory.Replace("2", "1");
 
             // Count the 1's. If its 0 or even, we're out
             int howManyWallsWereCrossed = stateHistory.ToCharArray().Count(c => c == '1');
