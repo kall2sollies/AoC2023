@@ -11,6 +11,7 @@ public abstract class Tile
     public Directions[] Connexions { get; set; } = Array.Empty<Directions>();
     public bool HasConnexions => Connexions.Length > 0;
     public virtual bool IsStartTile { get; init; }
+    public bool IsInLoop { get; set; }
 
     public string Id { get; set; }
 
@@ -89,6 +90,60 @@ public abstract class Tile
         else throw new Exception("Can't determine direction of other");
 
         return HasConnectionTo(directionOfOther) && other.HasConnectionTo(GetOppositeDirection(directionOfOther));
+    }
+
+    public bool IsInner
+    {
+        get
+        {
+            if (IsInLoop) return false;
+
+            Tile currentTile = this;
+            string stateHistory = "0";
+
+            // traverse towards east (or whatever direction)
+            // count how many times we cross the loop contour
+            // following an edge counts twice
+            // if total is odd, we're inside
+            // if total is even or zero, we're outside
+
+            while (true)
+            {
+                currentTile = currentTile.East;
+
+                // we are off the map
+                if (currentTile == null)
+                {
+                    break;
+                }
+
+                if (currentTile.IsInLoop)
+                {
+                    // We meet the loop contour while we were off the contour
+                    if (stateHistory.Last() == '0') stateHistory += "1";
+
+                    // We are following an edge and we're at the second tile of the edge
+                    else if (stateHistory.Last() == '1') stateHistory += "2";
+
+                    // We are still following an edge, at the third or more tile. We do nothing
+                }
+                else
+                {
+                    // We don't need to know how many times we're off the loop contour
+                    if (stateHistory.Last() != '0') stateHistory += "0";
+                }
+            }
+
+            // Now we can switch the 2's for 1's
+            stateHistory = stateHistory.Replace("2", "1");
+
+            // Count the 1's. If its 0 or even, we're out
+            int howManyWallsWereCrossed = stateHistory.ToCharArray().Count(c => c == '1');
+
+            bool isOut = howManyWallsWereCrossed == 0 || howManyWallsWereCrossed % 2 == 0;
+
+            return !isOut;
+        }
     }
 
     private static Directions GetOppositeDirection(Directions direction)

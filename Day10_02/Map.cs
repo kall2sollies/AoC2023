@@ -46,6 +46,7 @@ public class Map
     private void ComputeLoop()
     {
         Tile currentTile = StartTile;
+        currentTile.IsInLoop = true;
 
         LoopTiles.Add(currentTile);
 
@@ -59,8 +60,9 @@ public class Map
                 break;
             }
 
-            currentTile = nextTile;
+            nextTile.IsInLoop = true;
             LoopTiles.Add(nextTile);
+            currentTile = nextTile;
         }
     }
 
