@@ -101,6 +101,13 @@ public abstract class Tile
             Tile currentTile = this;
             string stateHistory = "0";
 
+            //   01234 
+            // 0 ╗═╔╗═
+            // 1  ╔╝║╗
+            // 2 ╬╝╚╚╗
+            // 3 ║╔══╝
+            // 4 ╚╝ ╚╝
+
             // traverse towards east (or whatever direction)
             // count how many times we cross the loop contour
             // following an edge counts twice
