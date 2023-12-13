@@ -9,19 +9,8 @@ public class Program
         Map map = new(File.ReadAllLines("input.txt"));
         Console.WriteLine(map);
 
-        Tile currentTile = map.StartTile;
-
-        int steps = 0;
-        while (true)
-        {
-            currentTile = currentTile.Next();
-            steps++;
-            if (currentTile.IsStartTile) break;
-        }
-
-        var halfSteps = steps / 2;
-
-        Console.WriteLine(steps);
+        var length = map.ComputeLoopLength();
+        Console.WriteLine(length / 2);
     }
 }
 
@@ -35,6 +24,7 @@ public class Map
     public Tile StartTile => TileList.First(x => x.IsStartTile);
 
     private readonly string[] _lines;
+
 
     public Map(string[] lines)
     {
@@ -64,6 +54,31 @@ public class Map
         }
     }
 
+    
+
+    public int ComputeLoopLength()
+    {
+        Tile currentTile = StartTile;
+        List<Guid> visitedTiles = new() {StartTile.Id};
+        int length = 0;
+        while (true)
+        {
+            Tile[] connectedNeighbours = currentTile.ConnectedNeighbours;
+            Tile nextTile = connectedNeighbours.FirstOrDefault(x => !visitedTiles.Contains(x.Id));
+
+            if (nextTile == null)
+            {
+                break;
+            }
+
+            length++;
+            currentTile = nextTile;
+            visitedTiles.Add(nextTile.Id);
+        }
+
+        return length + 1;
+    }
+
     public override string ToString()
     {
         StringBuilder sb = new();
@@ -72,7 +87,7 @@ public class Map
         {
             for (int x = 0; x < Width; x++)
             {
-                sb.Append(Tiles[x, y]);
+                sb.Append(Tiles[x, y].Drawing);
             }
 
             sb.Append(Environment.NewLine);
@@ -104,17 +119,14 @@ public static class TileFactory
 public abstract class Tile
 {
     private readonly Map _map;
-    private readonly char _char;
+    public readonly char _char;
 
     public int X { get; set; }
     public int Y { get; set; }
 
-    public Directions[] Connexions { get; set; }
+    public Directions[] Connexions { get; set; } = Array.Empty<Directions>();
     public bool HasConnexions => Connexions.Length > 0;
     public virtual bool IsStartTile { get; init; }
-
-    public bool IsLastColumn => X == _map.Width - 1;
-    public bool IsLastRow => Y == _map.Height - 1;
 
     public Guid Id { get; set; }
 
@@ -154,8 +166,6 @@ public abstract class Tile
     public Tile South => GetRelativeTile(0, 1);
     public Tile West => GetRelativeTile(-1, 0);
 
-    public Tile FirstOfNextLine => GetRelativeTile(-X, 1);
-
     public List<Tile> Neighbours
     {
         get
@@ -175,9 +185,7 @@ public abstract class Tile
 
         Tile tileAtDirection = GetTileAt(direction);
 
-        if (tileAtDirection == null) return false;
-
-        return tileAtDirection.HasDirection(GetOppositeDirection(direction));
+        return tileAtDirection != null && tileAtDirection.HasDirection(GetOppositeDirection(direction));
     }
 
     public bool IsNeighbourOf(Tile other)
@@ -189,11 +197,17 @@ public abstract class Tile
     {
         if (!IsNeighbourOf(other)) return false;
 
-        Directions[] directions = {Directions.N, Directions.E, Directions.W, Directions.S};
-        return directions.Any(d => HasConnectionTo(d) && other.HasConnectionTo(GetOppositeDirection(d)));
+        Directions directionOfOther;
+        if (North?.Id == other.Id) directionOfOther = Directions.N;
+        else if (East?.Id == other.Id) directionOfOther = Directions.E;
+        else if (South?.Id == other.Id) directionOfOther = Directions.S;
+        else if (West?.Id == other.Id) directionOfOther = Directions.W;
+        else throw new Exception("Can't determine direction of other");
+
+        return HasConnectionTo(directionOfOther) && other.HasConnectionTo(GetOppositeDirection(directionOfOther));
     }
 
-    private Directions GetOppositeDirection(Directions direction)
+    private static Directions GetOppositeDirection(Directions direction)
     {
         return direction switch
         {
@@ -205,34 +219,24 @@ public abstract class Tile
         };
     }
 
-    public Tile[] GetConnectedNeighbours()
-    {
-        return Neighbours.Where(x => x != null && x.HasConnectionTo(this)).ToArray();
-    }
+    public Tile[] ConnectedNeighbours => Neighbours.Where(x => x != null && x.HasConnectionTo(this)).ToArray();
 
-    public Tile Next()
+    public string Drawing => _char switch
     {
-        if (HasConnectionTo(Directions.N)) return GetTileAt(Directions.N);
-        if (HasConnectionTo(Directions.E)) return GetTileAt(Directions.E);
-        if (HasConnectionTo(Directions.S)) return GetTileAt(Directions.S);
-        if (HasConnectionTo(Directions.W)) return GetTileAt(Directions.W);
-        return null;
-    }
+        '.' => " ",
+        'F' => "\u2554",
+        '-' => "\u2550",
+        '7' => "\u2557",
+        '|' => "\u2551",
+        'J' => "\u255d",
+        'L' => "\u255a",
+        'S' => "\u256c",
+        _ => throw new Exception("Unknown tile")
+    };
 
     public override string ToString()
     {
-        return _char switch
-        {
-            '.' => " ",
-            'F' => "\u2554",
-            '-' => "\u2550",
-            '7' => "\u2557",
-            '|' => "\u2551",
-            'J' => "\u255d",
-            'L' => "\u255a",
-            'S' => "\u256c",
-            _ => throw new Exception("Unknown tile")
-        };
+        return $"[{X},{Y}] {Drawing}";
     }
 }
 
