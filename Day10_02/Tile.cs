@@ -92,9 +92,6 @@ public abstract class Tile
         return HasConnectionTo(directionOfOther) && other.HasConnectionTo(GetOppositeDirection(directionOfOther));
     }
 
-    public bool IsVertical => HasDirection(Directions.N) || HasDirection(Directions.S);
-    public bool IsHorizontal => HasDirection(Directions.W) || HasDirection(Directions.E);
-
     public bool IsInner
     {
         get
@@ -102,7 +99,7 @@ public abstract class Tile
             if (IsInLoop) return false;
 
             Tile currentTile = this;
-            string stateHistory = "0";
+            string stateHistory = string.Empty;
 
             //   01234 
             // 0 ╗═╔╗═
@@ -117,38 +114,41 @@ public abstract class Tile
             // if total is even or zero, we're outside
 
             // debug
-            if (this.X == 0 && this.Y == 0)
+            if (this.X == 0 && this.Y == 1)
             {
                 var foo = "bar";
             }
 
             while (true)
             {
-                // We traverse horizontally
-                currentTile = currentTile.East;
-
                 // we are off the map
                 if (currentTile == null)
                 {
                     break;
                 }
 
-                if (currentTile.IsInLoop && currentTile.IsVertical)
+                if (currentTile.IsInLoop)
                 {
-                    stateHistory += "1";
+                    if (currentTile.HasConnectionTo(Directions.N))
+                    {
+                        stateHistory += "1";
+                    }
                 }
                 else
                 {
                     stateHistory += "0";
                 }
+                
+                // We traverse horizontally
+                currentTile = currentTile.East;
             }
 
             // Count the 1's. If its 0 or even, we're out
             int howManyWallsWereCrossed = stateHistory.ToCharArray().Count(c => c == '1');
 
-            bool isOut = howManyWallsWereCrossed == 0 || howManyWallsWereCrossed % 2 == 0;
+            bool isIn = howManyWallsWereCrossed % 2 == 1;
 
-            return !isOut;
+            return isIn;
         }
     }
 
